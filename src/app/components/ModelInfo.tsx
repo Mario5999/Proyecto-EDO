@@ -1,6 +1,19 @@
 import { BookOpen, Calculator, Info } from 'lucide-react';
 
-export function ModelInfo() {
+interface Scenario {
+  name: string;
+  description: string;
+  k: number;
+  P0: number;
+  unit: string;
+  color: string;
+}
+
+interface ModelInfoProps {
+  scenario: Scenario;
+}
+
+export function ModelInfo({ scenario }: ModelInfoProps) {
   return (
     <div className="space-y-6">
       <div className="bg-white rounded-xl shadow-lg p-6 space-y-4">
@@ -73,6 +86,17 @@ export function ModelInfo() {
               Tiempo (variable independiente)
             </div>
           </div>
+        </div>
+
+        <div className="bg-blue-50 rounded p-3 border border-blue-100">
+          <p className="text-xs text-blue-600 font-semibold mb-1 uppercase tracking-wide">
+            Escenario actual — {scenario.name}
+          </p>
+          <p className="text-sm font-mono text-slate-800">k = {scenario.k} h⁻¹</p>
+          <p className="text-sm font-mono text-slate-800">P₀ = {scenario.P0} {scenario.unit}</p>
+          <p className="text-sm font-mono text-slate-800">
+            t₂ = {(Math.log(2) / scenario.k).toFixed(2)} h
+          </p>
         </div>
       </div>
 
