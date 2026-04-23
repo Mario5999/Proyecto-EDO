@@ -24,15 +24,12 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentTime, setCurrentTime] = useState(10);
 
-  // Solución analítica: P(t) = P0 * e^(kt)
   const analyticalSolution = useCallback((t: number) => P0 * Math.exp(k * t), [k, P0]);
 
-  // Solución numérica usando método de Euler
   const numericalSolution = useMemo(() => {
     const dt = 0.1;
     const steps = Math.floor(tMax / dt);
     const result = [{ t: 0, P: P0 }];
-
     let P = P0;
     for (let i = 1; i <= steps; i++) {
       const t = i * dt;
@@ -40,15 +37,12 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
       P = P + dP;
       result.push({ t: parseFloat(t.toFixed(2)), P });
     }
-
     return result;
   }, [k, P0, tMax]);
 
-  // Datos para la gráfica
   const chartData = useMemo(() => {
     const data = [];
     const step = tMax / 100;
-
     for (let t = 0; t <= (isAnimating ? currentTime : tMax); t += step) {
       data.push({
         t: parseFloat(t.toFixed(2)),
@@ -56,14 +50,12 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
         Numérica: numericalSolution.find(p => Math.abs(p.t - t) < step)?.P || 0
       });
     }
-
     return data;
   }, [tMax, currentTime, isAnimating, numericalSolution, analyticalSolution]);
 
   const handleAnimate = () => {
     setIsAnimating(true);
     setCurrentTime(0);
-
     const interval = setInterval(() => {
       setCurrentTime(prev => {
         if (prev >= tMax) {
@@ -93,24 +85,21 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
         <h2 className="text-2xl font-bold text-slate-900">Simulador Interactivo</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">
               Tasa de crecimiento (k)
             </label>
             <input
-              type="range"
-              min="0.05"
-              max="1"
-              step="0.05"
+              type="number"
               value={k}
-              onChange={(e) => setK(parseFloat(e.target.value))}
-              className="w-full"
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val) && val > 0) setK(val);
+              }}
               disabled={isAnimating}
-              title="Controla la tasa de crecimiento exponencial"
+              className="w-full text-center font-mono text-sm bg-slate-100 rounded px-3 py-2 text-black border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:text-slate-400 disabled:bg-slate-200"
             />
-            <div className="text-center font-mono text-sm bg-slate-100 rounded px-3 py-1 text-black">
-              k = {k.toFixed(2)}
-            </div>
           </div>
 
           <div className="space-y-2">
@@ -118,19 +107,15 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
               Población inicial (P₀)
             </label>
             <input
-              type="range"
-              min={scenario.P0 * 0.1}
-              max={scenario.P0 * 5}
-              step={scenario.P0 * 0.1}
+              type="number"
               value={P0}
-              onChange={(e) => setP0(parseFloat(e.target.value))}
-              className="w-full"
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val) && val > 0) setP0(val);
+              }}
               disabled={isAnimating}
-              title="Establece la población inicial del modelo"
+              className="w-full text-center font-mono text-sm bg-slate-100 rounded px-3 py-2 text-black border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:text-slate-400 disabled:bg-slate-200"
             />
-            <div className="text-center font-mono text-sm bg-slate-100 rounded px-3 py-1 ui-button-text text-black">
-              P₀ = {P0.toFixed(0)}
-            </div>
           </div>
 
           <div className="space-y-2">
@@ -138,19 +123,15 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
               Tiempo máximo (t)
             </label>
             <input
-              type="range"
-              min="5"
-              max="20"
-              step="1"
+              type="number"
               value={tMax}
-              onChange={(e) => setTMax(parseFloat(e.target.value))}
-              className="w-full"
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                if (!isNaN(val) && val > 0) setTMax(val);
+              }}
               disabled={isAnimating}
-              title="Define el rango temporal del modelo"
+              className="w-full text-center font-mono text-sm bg-slate-100 rounded px-3 py-2 text-black border border-slate-300 focus:outline-none focus:ring-2 focus:ring-blue-400 disabled:text-slate-400 disabled:bg-slate-200"
             />
-            <div className="text-center font-mono text-sm bg-slate-100 rounded px-3 py-1 text-black">
-              t = {tMax} unidades
-            </div>
           </div>
         </div>
 
