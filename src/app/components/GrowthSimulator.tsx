@@ -67,6 +67,18 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
       }));
   }, [numericalSolution, k, P0, isAnimating, currentTime, tMax]);
 
+  const tableData = useMemo(() => {
+    const steps = Math.round(tMax);
+    return Array.from({ length: steps + 1 }, (_, i) => {
+      const t = i;
+      const analytic = P0 * Math.exp(k * t);
+      const eulerPoint = numericalSolution.find(p => Math.abs(p.t - t) < 0.05);
+      const euler = eulerPoint?.P ?? analytic;
+      const error = ((Math.abs(analytic - euler) / analytic) * 100);
+      return { t, analytic, euler, error };
+    });
+  }, [k, P0, tMax, numericalSolution]);
+
   const multiKData = useMemo(() => {
     return Array.from({ length: 101 }, (_, i) => {
       const t = parseFloat((i * tMax / 100).toFixed(2));
@@ -239,6 +251,36 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
           <div className="text-sm text-green-700 font-medium mb-1">Factor de Crecimiento</div>
           <div className="text-2xl font-bold text-green-900">{(finalValue / P0).toFixed(2)}×</div>
           <div className="text-xs text-green-600 mt-1">veces el valor inicial</div>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
+        <p className="text-xs font-medium text-slate-500 px-4 pt-4 pb-2">
+          Tabla 1 — Comparación solución analítica vs. Euler (k = {k}, P₀ = {P0} {scenario.unit})
+        </p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm text-right">
+            <thead className="bg-slate-100 text-slate-600 text-xs uppercase">
+              <tr>
+                <th className="px-4 py-2 text-left">t (h)</th>
+                <th className="px-4 py-2">P analítica ({scenario.unit})</th>
+                <th className="px-4 py-2">P Euler ({scenario.unit})</th>
+                <th className="px-4 py-2">Error relativo (%)</th>
+              </tr>
+            </thead>
+            <tbody>
+              {tableData.map(({ t, analytic, euler, error }) => (
+                <tr key={t} className="border-t border-slate-100 hover:bg-slate-50">
+                  <td className="px-4 py-2 text-left font-mono text-slate-700">{t}</td>
+                  <td className="px-4 py-2 font-mono text-blue-700">{analytic.toFixed(2)}</td>
+                  <td className="px-4 py-2 font-mono text-red-600">{euler.toFixed(2)}</td>
+                  <td className={`px-4 py-2 font-mono font-medium ${error < 2 ? 'text-green-600' : error < 4 ? 'text-amber-600' : 'text-red-600'}`}>
+                    {error.toFixed(3)}%
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
