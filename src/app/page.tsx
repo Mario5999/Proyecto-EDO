@@ -85,7 +85,7 @@ export default function Page() {
           </div>
 
           <div className="lg:col-span-1">
-            <ModelInfo />
+            <ModelInfo scenario={scenarios[selectedScenario]} />
           </div>
         </div>
       </div>

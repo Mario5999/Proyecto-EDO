@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Play, RotateCcw } from 'lucide-react';
 
@@ -17,12 +17,28 @@ interface GrowthSimulatorProps {
   scenario: Scenario;
 }
 
+const MULTI_K_COLORS = ['#6366f1', '#f59e0b', '#10b981', '#ef4444'];
+const MULTI_K_VALUES = [0.1, 0.3, 0.5, 0.8];
+
 export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
   const [k, setK] = useState(scenario.k);
   const [P0, setP0] = useState(scenario.P0);
   const [tMax, setTMax] = useState(10);
   const [isAnimating, setIsAnimating] = useState(false);
   const [currentTime, setCurrentTime] = useState(10);
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setK(scenario.k);
+    setP0(scenario.P0);
+    setTMax(10);
+  }, [scenario]);
+
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) clearInterval(intervalRef.current);
+    };
+  }, []);
 
   const analyticalSolution = useCallback((t: number) => P0 * Math.exp(k * t), [k, P0]);
 
@@ -41,25 +57,35 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
   }, [k, P0, tMax]);
 
   const chartData = useMemo(() => {
-    const data = [];
-    const step = tMax / 100;
-    for (let t = 0; t <= (isAnimating ? currentTime : tMax); t += step) {
-      data.push({
-        t: parseFloat(t.toFixed(2)),
-        Analítica: parseFloat(analyticalSolution(t).toFixed(2)),
-        Numérica: numericalSolution.find(p => Math.abs(p.t - t) < step)?.P || 0
+    const maxT = isAnimating ? currentTime : tMax;
+    return numericalSolution
+      .filter(({ t }) => t <= maxT)
+      .map(({ t, P }) => ({
+        t,
+        'Analítica': parseFloat((P0 * Math.exp(k * t)).toFixed(2)),
+        'Numérica': parseFloat(P.toFixed(2)),
+      }));
+  }, [numericalSolution, k, P0, isAnimating, currentTime, tMax]);
+
+  const multiKData = useMemo(() => {
+    return Array.from({ length: 101 }, (_, i) => {
+      const t = parseFloat((i * tMax / 100).toFixed(2));
+      const point: Record<string, number> = { t };
+      MULTI_K_VALUES.forEach(ki => {
+        point[`k=${ki}`] = parseFloat((P0 * Math.exp(ki * t)).toFixed(2));
       });
-    }
-    return data;
-  }, [tMax, currentTime, isAnimating, numericalSolution, analyticalSolution]);
+      return point;
+    });
+  }, [P0, tMax]);
 
   const handleAnimate = () => {
     setIsAnimating(true);
     setCurrentTime(0);
-    const interval = setInterval(() => {
+
+    intervalRef.current = setInterval(() => {
       setCurrentTime(prev => {
         if (prev >= tMax) {
-          clearInterval(interval);
+          clearInterval(intervalRef.current!);
           setIsAnimating(false);
           return tMax;
         }
@@ -69,6 +95,7 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
   };
 
   const handleReset = () => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
     setK(scenario.k);
     setP0(scenario.P0);
     setTMax(10);
@@ -85,7 +112,6 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
         <h2 className="text-2xl font-bold text-slate-900">Simulador Interactivo</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">
               Tasa de crecimiento (k)
@@ -120,7 +146,7 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
 
           <div className="space-y-2">
             <label className="block text-sm font-medium text-slate-700">
-              Tiempo máximo (t)
+              Tiempo máximo (h)
             </label>
             <input
               type="number"
@@ -156,12 +182,15 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
       </div>
 
       <div className="bg-slate-50 rounded-lg p-4">
+        <p className="text-xs font-medium text-slate-500 mb-2">
+          Figura 2 — Solución analítica vs. Método de Euler (Δt = 0.1 h)
+        </p>
         <ResponsiveContainer width="100%" height={400}>
           <LineChart data={chartData}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis
               dataKey="t"
-              label={{ value: 'Tiempo (t)', position: 'insideBottom', offset: -5 }}
+              label={{ value: 'Tiempo (h)', position: 'insideBottom', offset: -5 }}
               stroke="#64748b"
             />
             <YAxis
@@ -195,28 +224,57 @@ export function GrowthSimulator({ scenario }: GrowthSimulatorProps) {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-lg p-4 border border-blue-200">
-          <div className="text-sm text-blue-700 font-medium mb-1">Valor Final</div>
-          <div className="text-2xl font-bold text-blue-900">
-            {finalValue.toFixed(2)}
-          </div>
+          <div className="text-sm text-blue-700 font-medium mb-1">Valor Final P({tMax}h)</div>
+          <div className="text-2xl font-bold text-blue-900">{finalValue.toFixed(2)}</div>
           <div className="text-xs text-blue-600 mt-1">{scenario.unit}</div>
         </div>
 
         <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-lg p-4 border border-purple-200">
           <div className="text-sm text-purple-700 font-medium mb-1">Tiempo de Duplicación</div>
-          <div className="text-2xl font-bold text-purple-900">
-            {doublingTime.toFixed(2)}
-          </div>
-          <div className="text-xs text-purple-600 mt-1">unidades de tiempo</div>
+          <div className="text-2xl font-bold text-purple-900">{doublingTime.toFixed(2)}</div>
+          <div className="text-xs text-purple-600 mt-1">horas (t₂ = ln2/k)</div>
         </div>
 
         <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-lg p-4 border border-green-200">
           <div className="text-sm text-green-700 font-medium mb-1">Factor de Crecimiento</div>
-          <div className="text-2xl font-bold text-green-900">
-            {(finalValue / P0).toFixed(2)}×
-          </div>
+          <div className="text-2xl font-bold text-green-900">{(finalValue / P0).toFixed(2)}×</div>
           <div className="text-xs text-green-600 mt-1">veces el valor inicial</div>
         </div>
+      </div>
+
+      <div className="bg-slate-50 rounded-lg p-4">
+        <p className="text-xs font-medium text-slate-500 mb-2">
+          Figura 4 — Comparación de curvas para k ∈ {'{0.1, 0.3, 0.5, 0.8}'} h⁻¹ (P₀ = {P0} {scenario.unit})
+        </p>
+        <ResponsiveContainer width="100%" height={320}>
+          <LineChart data={multiKData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+            <XAxis
+              dataKey="t"
+              label={{ value: 'Tiempo (h)', position: 'insideBottom', offset: -5 }}
+              stroke="#64748b"
+            />
+            <YAxis
+              label={{ value: `Población (${scenario.unit})`, angle: -90, position: 'insideLeft' }}
+              stroke="#64748b"
+            />
+            <Tooltip
+              contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '0.5rem', color: '#fff' }}
+            />
+            <Legend />
+            {MULTI_K_VALUES.map((ki, idx) => (
+              <Line
+                key={ki}
+                type="monotone"
+                dataKey={`k=${ki}`}
+                stroke={MULTI_K_COLORS[idx]}
+                strokeWidth={2}
+                dot={false}
+                name={`k = ${ki} h⁻¹`}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
       </div>
     </div>
   );
